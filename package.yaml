@@ -1,0 +1,33 @@
+name:               enum-text
+version:            0.5.1.0
+github:             "cdornan/enum-text"
+license:            BSD3
+author:             "Chris Dornan"
+maintainer:         "chris@chrisdornan.com"
+copyright:          "2019 Chris Dornan"
+category:           Text
+synopsis:           "A text rendering and parsing toolkit for enumerated types"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+description:        A text rendering and parsing toolkit for enumerated types.
+                    Please see the README on GitHub at <https://github.com/cdornan/enum-text#readme>
+
+dependencies:
+- base >= 4.8.2 && < 10
+- array
+- bytestring
+- fmt
+- hashable
+- possibly
+- text
+- time
+- unordered-containers
+
+ghc-options:
+- -Wall
+
+library:
+  source-dirs: src

@@ -1,0 +1,10 @@
+resolver: lts-9.21
+
+ghc-options:
+  "$locals": -Werror
+
+packages:
+- .
+
+extra-deps:
+- possibly-0.0.0.1

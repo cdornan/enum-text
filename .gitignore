@@ -1,0 +1,9 @@
+enum-text.cabal
+/dist
+/dist-newstyle
+._*
+.DS_Store
+.stack-work
+dist
+dist-newstyle
+.ghc.*
