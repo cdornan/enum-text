@@ -42,7 +42,7 @@ instance TextParsable Foo where parseText = parseEnumText
 
 With the @DeriveAnyClass@ language extension you can list @EnumText@ in the
 @deriving@ clause, and with @DerivingVia@ (available from GHC 8.6.1) you can
-dervive @via@ @UsingEnumText@ as follows:
+derive @via@ @UsingEnumText@ as follows:
 
 
 @
