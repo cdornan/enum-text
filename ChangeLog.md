@@ -1,3 +1,7 @@
+# 0.5.2.0
+
+  * icorporate MonadFail
+
 # 0.5.1.0
 
   * add @UsingEnumText@ wrapper type and instances for

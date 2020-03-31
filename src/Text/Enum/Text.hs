@@ -3,6 +3,7 @@
 {-# LANGUAGE RecordWildCards      #-}
 {-# LANGUAGE ScopedTypeVariables  #-}
 {-# LANGUAGE LambdaCase           #-}
+{-# OPTIONS_GHC -fno-warn-unused-imports #-}
 
 module Text.Enum.Text
   ( EnumText(..)
@@ -12,6 +13,7 @@ module Text.Enum.Text
   , defaultEnumTextConfig
   ) where
 
+import           Control.Monad.Fail
 import           Data.Array
 import qualified Data.ByteString.Char8          as B
 import           Data.Coerce
@@ -91,7 +93,7 @@ class ( Buildable     e
   toFieldEnumText e = enumByteStringArray ! I e
 
   -- | A cassava field parser using the 'renderEnumText' format.
-  fromFieldEnumText_ :: Monad m => B.ByteString -> m e
+  fromFieldEnumText_ :: MonadFail m => B.ByteString -> m e
   fromFieldEnumText_ bs = maybe (fail msg) return $ HM.lookup bs hashmap_b
     where
       msg = "fromFieldEnumText_: enumeration not recognised: "++show bs
