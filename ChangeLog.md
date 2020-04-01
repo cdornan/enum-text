@@ -1,6 +1,6 @@
-# 0.5.2.0
+# 0.5.2.1
 
-  * icorporate MonadFail
+  * incorporate MonadFail
 
 # 0.5.1.0
 

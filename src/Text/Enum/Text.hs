@@ -13,7 +13,7 @@ module Text.Enum.Text
   , defaultEnumTextConfig
   ) where
 
-import           Control.Monad.Fail
+import           Control.Monad.Fail             as CMF
 import           Data.Array
 import qualified Data.ByteString.Char8          as B
 import           Data.Coerce
@@ -94,7 +94,7 @@ class ( Buildable     e
 
   -- | A cassava field parser using the 'renderEnumText' format.
   fromFieldEnumText_ :: MonadFail m => B.ByteString -> m e
-  fromFieldEnumText_ bs = maybe (fail msg) return $ HM.lookup bs hashmap_b
+  fromFieldEnumText_ bs = maybe (CMF.fail msg) return $ HM.lookup bs hashmap_b
     where
       msg = "fromFieldEnumText_: enumeration not recognised: "++show bs
 
