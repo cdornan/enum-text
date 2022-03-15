@@ -238,8 +238,15 @@ parseTextRead :: Read a
               => String   -- ^ name of type bing parsed (for failure message)
               -> T.Text   -- ^ 'T.Text' to be parsed
               -> Possibly a
-parseTextRead ty_s txt =
-    maybe (Left $ typeError ty_s $ show str) Right $ readMaybe str
+parseTextRead = parseTextUsing (readMaybe . T.unpack)
+
+-- | Use the given function to turn the input string into a 'TextParsable'
+parseTextUsing :: (T.Text -> Maybe a)
+               -> String   -- ^ name of type bing parsed (for failure message)
+               -> T.Text   -- ^ 'T.Text' to be parsed
+               -> Possibly a
+parseTextUsing maybeParser ty_s txt =
+    maybe (Left $ typeError ty_s $ show str) Right $ maybeParser txt
   where
     str = T.unpack txt
 
