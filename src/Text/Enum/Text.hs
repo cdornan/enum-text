@@ -13,12 +13,15 @@ module Text.Enum.Text
   , defaultEnumTextConfig
   ) where
 
+import           Control.Monad                  (void)
 import           Control.Monad.Fail             as CMF
 import           Data.Array
+import qualified Data.Attoparsec.Text           as AP
 import qualified Data.ByteString.Char8          as B
 import           Data.Coerce
 import           Data.Hashable
 import           Data.Possibly
+import           Data.Scientific                (toBoundedInteger)
 import qualified Data.HashMap.Strict            as HM
 import qualified Data.Text                      as T
 import qualified Data.Text.Encoding             as TE
@@ -161,7 +164,22 @@ class TextParsable a where
   parseText :: T.Text -> Possibly a
 
 instance TextParsable T.Text          where parseText = return
-instance TextParsable UTCTime         where parseText = parseTextRead "UTCTime"
+
+-- | Robust 'TextParsable' instance for 'UTCTime'.
+--
+-- Examples:
+--
+-- >>> show <$> parseText @UTCTime (T.pack "2020-01-01 10:12:30")
+-- Right "2020-01-01 10:12:30 UTC"
+--
+-- >>> show <$> parseText @UTCTime (T.pack "2020-01-01T10:12:30")
+-- Right "2020-01-01 10:12:30 UTC"
+--
+-- >>> show <$> parseText @UTCTime (T.pack "2020-01-01T10:12:30Z")
+-- Right "2020-01-01 10:12:30 UTC"
+--
+instance TextParsable UTCTime         where parseText = parseTextUsing parseUTC "UTCTime"
+
 instance TextParsable Day             where parseText = parseTextRead "Day"
 instance TextParsable Int             where parseText = parseDecimal
 instance a ~ Char => TextParsable [a] where parseText = return . T.unpack
@@ -234,6 +252,15 @@ parseDecimal txt = either (Left . typeError "integer") return $ do
       False -> Left $ "residual input: " ++ T.unpack r
 
 -- | Convert a 'Read' parser into a 'TextParsable'
+--
+-- Examples:
+--
+-- >>> parseTextRead @Int "Int" (T.pack "10")
+-- Right 10
+--
+-- >>> parseTextRead @Int "Int" (T.pack "a")
+-- Left "failed to parse Int: \"a\""
+--
 parseTextRead :: Read a
               => String   -- ^ name of type bing parsed (for failure message)
               -> T.Text   -- ^ 'T.Text' to be parsed
@@ -241,6 +268,15 @@ parseTextRead :: Read a
 parseTextRead = parseTextUsing (readMaybe . T.unpack)
 
 -- | Use the given function to turn the input string into a 'TextParsable'
+--
+-- Examples:
+--
+-- >>> parseTextUsing @Int (readMaybe . T.unpack) "Int" (T.pack "10")
+-- Right 10
+--
+-- >>> parseTextUsing @Int (readMaybe . T.unpack) "Int" (T.pack "a")
+-- Left "failed to parse Int: \"a\""
+--
 parseTextUsing :: (T.Text -> Maybe a)
                -> String   -- ^ name of type bing parsed (for failure message)
                -> T.Text   -- ^ 'T.Text' to be parsed
@@ -252,3 +288,73 @@ parseTextUsing maybeParser ty_s txt =
 
 typeError :: String -> String -> String
 typeError ty_s msg = "failed to parse "++ty_s++": "++msg
+
+-------------------------------------------------------------------------------
+-- support for parsing UTCTime (see enum-text#1)
+-------------------------------------------------------------------------------
+
+-- The following has been cribbed from the \"Data.API.Time\" module from the
+-- \"api-tools\" package.
+
+-- | Parse text as a 'UTCTime' in ISO 8601 format or a number of slight
+-- variations thereof (the @T@ may be replaced with a space, and the seconds,
+-- milliseconds and/or @Z@ timezone indicator may optionally be omitted).
+--
+-- Time zone designations other than @Z@ for UTC are not currently supported.
+parseUTC :: T.Text -> Maybe UTCTime
+parseUTC t = case AP.parseOnly (parserUTCTime <* AP.endOfInput) t of
+    Left _  -> Nothing
+    Right r -> Just r
+
+parserUTCTime :: AP.Parser UTCTime
+parserUTCTime = do
+    day <- parserDay
+    void $ AP.skip (\c -> c == ' ' || c == 'T')
+    time <- parserTime
+    mb_offset <- parserTimeZone
+    pure (maybe id addUTCTime mb_offset $ UTCTime day time)
+
+-- | Parser for @YYYY-MM-DD@ format.
+parserDay :: AP.Parser Day
+parserDay = do
+    y :: Int <- AP.decimal <* AP.char '-'
+    m :: Int <- AP.decimal <* AP.char '-'
+    d :: Int <- AP.decimal
+    case fromGregorianValid (fromIntegral y) m d of
+        Just x  -> pure x
+        Nothing -> fail "invalid date"
+
+-- | Parser for times in the format @HH:MM@, @HH:MM:SS@ or @HH:MM:SS.QQQ...@.
+parserTime :: AP.Parser DiffTime
+parserTime = do
+    h :: Int <- AP.decimal
+    void $ AP.char ':'
+    m :: Int <- AP.decimal
+    c <- AP.peekChar
+    s <- case c of
+           Just ':' -> AP.anyChar *> AP.scientific
+           _        -> pure 0
+    case toBoundedInteger (10^(12::Int) * (s + fromIntegral (60*(m + 60*h)))) of
+      Just n -> pure (picosecondsToDiffTime (fromIntegral (n :: Int)))
+      Nothing -> fail "seconds out of range"
+
+-- | Parser for time zone indications such as @Z@, @ UTC@ or an explicit offset
+-- like @+HH:MM@ or @-HH@.  Returns 'Nothing' for UTC.  Local times (without a
+-- timezone designator) are assumed to be UTC.  If there is an explicit offset,
+-- returns its negation.
+parserTimeZone :: AP.Parser (Maybe NominalDiffTime)
+parserTimeZone = do
+    c <- AP.option 'Z' AP.anyChar
+    case c of
+      'Z' -> pure Nothing
+      ' ' -> "UTC" *> pure Nothing
+      '+' -> parse_offset True
+      '-' -> parse_offset False
+      _   -> fail "unexpected time zone character"
+  where
+    parse_offset pos = do
+      hh :: Int <- read <$> AP.count 2 AP.digit
+      AP.option () (AP.skip (== ':'))
+      mm :: Int <- AP.option 0 (read <$> AP.count 2 AP.digit)
+      let v = (if pos then negate else id) ((hh*60 + mm) * 60)
+      return (Just (fromIntegral v))
