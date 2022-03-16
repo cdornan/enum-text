@@ -18,10 +18,12 @@ description:        A text rendering and parsing toolkit for enumerated types.
 dependencies:
 - base >= 4.9 && < 10
 - array
+- attoparsec
 - bytestring
 - fmt
 - hashable
 - possibly
+- scientific
 - text
 - time
 - unordered-containers
@@ -31,3 +33,16 @@ ghc-options:
 
 library:
   source-dirs: src
+
+tests:
+  enum-text-tests:
+    main:                Doctest.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - doctest
+    - doctest-discover
+    - enum-text
