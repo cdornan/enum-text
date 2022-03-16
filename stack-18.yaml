@@ -1,0 +1,7 @@
+resolver: lts-18.28
+
+ghc-options:
+  "$locals": -Werror
+
+packages:
+- .

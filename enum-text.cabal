@@ -5,7 +5,7 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           enum-text
-version:        0.5.2.1
+version:        0.5.3.0
 synopsis:       A text rendering and parsing toolkit for enumerated types
 description:    A text rendering and parsing toolkit for enumerated types. Please see the README on GitHub at <https://github.com/cdornan/enum-text#readme>
 category:       Text
